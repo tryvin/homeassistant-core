@@ -27,7 +27,7 @@ class ERedesDataCoordinator(DataUpdateCoordinator[dict]):
             hass,
             _LOGGER,
             name="E-Redes Readings",
-            update_interval=timedelta(minutes=5),
+            update_interval=timedelta(days=1),
         )
 
         self.hub = hub
