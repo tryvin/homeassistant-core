@@ -1,0 +1,13 @@
+{
+  "domain": "eredes_balcao_digital_readings",
+  "name": "E-Redes Balcao Digital Readings",
+  "codeowners": ["@tryvin"],
+  "config_flow": true,
+  "dependencies": ["network"],
+  "documentation": "https://www.home-assistant.io/integrations/eredes_balcao_digital_readings",
+  "homekit": {},
+  "iot_class": "cloud_polling",
+  "requirements": ["2captcha-python==1.2.6"],
+  "ssdp": [],
+  "zeroconf": []
+}

@@ -159,6 +159,7 @@ FLOWS = {
         "epion",
         "epson",
         "eq3btsmart",
+        "eredes_balcao_digital_readings",
         "escea",
         "esphome",
         "eufylife_ble",

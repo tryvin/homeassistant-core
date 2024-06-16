@@ -3,6 +3,9 @@
 
 -r requirements_test.txt
 
+# homeassistant.components.eredes_balcao_digital_readings
+2captcha-python==1.2.6
+
 # homeassistant.components.aemet
 AEMET-OpenData==0.5.1
 
