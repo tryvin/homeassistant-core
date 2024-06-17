@@ -43,6 +43,24 @@ class ERedesDataCoordinator(DataUpdateCoordinator[dict]):
 
     async def _async_update_data(self):
         try:
+            current_time = datetime.now()
+            start_date = current_time.replace(
+                day=1, hour=0, minute=0, second=0, tzinfo=UTC, microsecond=0
+            )
+            end_date = current_time.replace(
+                hour=23, minute=59, second=59, tzinfo=UTC, microsecond=0
+            )
+
+            if await self.site_scrapper.has_cached_readings_for_period(
+                start_date, end_date
+            ):
+                return await self.site_scrapper.fetch_formatted_readings_for_period(
+                    start_date,
+                    end_date,
+                    "",
+                    "",
+                )
+
             php_session = await self.site_scrapper.fetch_php_session()
 
             try_count = 0
@@ -68,18 +86,9 @@ class ERedesDataCoordinator(DataUpdateCoordinator[dict]):
             while try_count < 5:
                 async with async_timeout(90):
                     try:
-                        current_time = datetime.now()
-
                         return await self.site_scrapper.fetch_formatted_readings_for_period(
-                            current_time.replace(
-                                day=1, hour=0, minute=0, second=0, tzinfo=UTC
-                            ),
-                            current_time.replace(
-                                hour=23,
-                                minute=59,
-                                second=59,
-                                tzinfo=UTC,
-                            ),
+                            start_date,
+                            end_date,
                             user_token["php_session"],
                             user_token["jwt_token"],
                         )

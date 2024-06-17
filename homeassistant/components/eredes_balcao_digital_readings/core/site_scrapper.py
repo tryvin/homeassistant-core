@@ -270,6 +270,25 @@ class SiteScrapper:
 
         return data_formatted
 
+    async def has_cached_readings_for_period(
+        self, start_date: datetime, end_date: datetime
+    ) -> bool:
+        """Check if we have cached readings for a period."""
+
+        storage_value = await self.__fetch_storage_value(self._reports_store)
+
+        if "reports" in storage_value:
+            last_reports = storage_value["reports"]
+
+            if datetime.fromtimestamp(float(last_reports["end_date"]), tz=UTC).replace(
+                microsecond=0
+            ) == end_date.replace(microsecond=0) and datetime.fromtimestamp(
+                float(last_reports["start_date"]), tz=UTC
+            ).replace(microsecond=0) == start_date.replace(microsecond=0):
+                return True
+
+        return False
+
     async def fetch_formatted_readings_for_period(
         self, start_date: datetime, end_date: datetime, php_session: str, jwt_token: str
     ) -> dict:
