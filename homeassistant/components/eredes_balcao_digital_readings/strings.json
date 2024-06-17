@@ -3,7 +3,8 @@
     "step": {
       "user": {
         "data": {
-          "api_key": "2Captcha API Key",
+          "api_key": "Captcha Solver API Key",
+          "eredes_captcha_api_endpoint": "Captcha Solver API Endpoint",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
           "eredes_cpe": "CPE E-Redes"

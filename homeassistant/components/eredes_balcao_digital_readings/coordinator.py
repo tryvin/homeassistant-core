@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .config_flow import _LOGGER
+from .const import _LOGGER
 from .core.exceptions import (
     CaptchaFailedToConnectToApi,
     CaptchaFailedToSolve,
@@ -45,14 +45,27 @@ class ERedesDataCoordinator(DataUpdateCoordinator[dict]):
         try:
             php_session = await self.site_scrapper.fetch_php_session()
 
-            user_token = await self.site_scrapper.fetch_user_token(
-                php_session=php_session
-            )
+            try_count = 0
+            user_token = None
+            last_except = None
+
+            while try_count < 5 and user_token is None:
+                async with async_timeout(90):
+                    try:
+                        user_token = await self.site_scrapper.fetch_user_token(
+                            php_session=php_session
+                        )
+                    except (CaptchaFailedToConnectToApi, CaptchaFailedToSolve) as e:
+                        last_except = e
+                        try_count += 1
+
+            if last_except is not None and user_token is None:
+                raise last_except
 
             try_count = 0
             last_except = None
 
-            while try_count < 3:
+            while try_count < 5:
                 async with async_timeout(90):
                     try:
                         current_time = datetime.now()

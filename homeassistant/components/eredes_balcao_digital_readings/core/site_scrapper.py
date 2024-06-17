@@ -1,16 +1,16 @@
 """E-redes site connector."""
 
 from datetime import UTC, datetime, timedelta
-from typing import Final
+from typing import Any
 
 from aiohttp.client import ClientResponse
 import jwt
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.storage import Store
 
-from ..config_flow import _LOGGER
-from ..const import DEFAULT_TIMEOUT
+from ..const import _LOGGER, DEFAULT_HEADERS, DEFAULT_TIMEOUT, HOME_URL, ORIGIN_URL
 from .captcha import ERedesCaptchaSolver
 from .exceptions import (
     CannotConnect,
@@ -18,13 +18,6 @@ from .exceptions import (
     CaptchaFailedToSolve,
     InvalidAuth,
 )
-
-USER_AGENT: Final = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-HOME_URL: Final = "https://balcaodigital.e-redes.pt/"
-ORIGIN_URL: Final = "https://balcaodigital.e-redes.pt"
-DEFAULT_HEADERS: Final = {
-    "User-Agent": USER_AGENT,
-}
 
 
 class SiteScrapper:
@@ -45,6 +38,20 @@ class SiteScrapper:
         self.user_nif = user_nif
         self.password = password
         self.home_cpe = home_cpe
+
+        self._session_store = Store[dict[str, Any]](
+            hass, 1, f"site_scrapper_{home_cpe}_session"
+        )
+
+        self._reports_store = Store[dict[str, Any]](
+            hass, 1, f"site_scrapper_{home_cpe}_reports"
+        )
+
+    async def __fetch_storage_value(self, store: Store) -> dict[str, Any]:
+        return await store.async_load() or {}
+
+    async def __put_storage_value(self, store: Store, value: dict[str, Any]) -> None:
+        return await store.async_save(value)
 
     async def __fetch_url(self, url) -> ClientResponse:
         return await async_create_clientsession(self.hass).get(
@@ -74,6 +81,15 @@ class SiteScrapper:
     async def fetch_php_session(self) -> str | None:
         """Fetch the PHP session cookie."""
 
+        storage_value = await self.__fetch_storage_value(self._session_store)
+
+        if "php_session" in storage_value:
+            last_session = storage_value
+            if datetime.fromtimestamp(
+                float(last_session["expires_at"]), tz=UTC
+            ) > datetime.now(tz=UTC):
+                return last_session["php_session"]
+
         _LOGGER.debug("Requesting PHPsessid")
 
         home_response = await self.__fetch_url(HOME_URL)
@@ -89,6 +105,15 @@ class SiteScrapper:
 
     async def fetch_user_token(self, php_session: str | None = None) -> dict | None:
         """Fetch the authenticated user token."""
+
+        storage_value = await self.__fetch_storage_value(self._session_store)
+
+        if "php_session" in storage_value:
+            last_session = storage_value
+            if datetime.fromtimestamp(
+                float(last_session["expires_at"]), tz=UTC
+            ) > datetime.now(tz=UTC):
+                return last_session
 
         if php_session is None:
             php_session = await self.fetch_php_session()
@@ -186,10 +211,21 @@ class SiteScrapper:
 
             decoded_jwt = jwt.decode(aat_cookie, options={"verify_signature": False})
 
+            await self.__put_storage_value(
+                self._session_store,
+                {
+                    "php_session": str(php_session),
+                    "jwt_token": str(aat_cookie),
+                    "expires_at": float(decoded_jwt["exp"])
+                    if "exp" in decoded_jwt
+                    else (datetime.now(tz=UTC) + timedelta(minutes=30)).timestamp(),
+                },
+            )
+
             return {
                 "php_session": php_session,
                 "jwt_token": aat_cookie,
-                "expires_at": datetime.fromtimestamp(decoded_jwt["exp"], tz=UTC)
+                "expires_at": datetime.fromtimestamp(float(decoded_jwt["exp"]), tz=UTC)
                 if "exp" in decoded_jwt
                 else datetime.now(tz=UTC) + timedelta(hours=2),
             }
@@ -238,6 +274,18 @@ class SiteScrapper:
         self, start_date: datetime, end_date: datetime, php_session: str, jwt_token: str
     ) -> dict:
         """Fetch daily readings formatted."""
+
+        storage_value = await self.__fetch_storage_value(self._reports_store)
+
+        if "reports" in storage_value:
+            last_reports = storage_value["reports"]
+
+            if datetime.fromtimestamp(float(last_reports["end_date"]), tz=UTC).replace(
+                microsecond=0
+            ) == end_date.replace(microsecond=0) and datetime.fromtimestamp(
+                float(last_reports["start_date"]), tz=UTC
+            ).replace(microsecond=0) == start_date.replace(microsecond=0):
+                return last_reports["data"]
 
         try:
             # Fetch a Captcha for the Session Endpoint
@@ -292,6 +340,17 @@ class SiteScrapper:
             if "Body" in readings_data and readings_data["Body"]["Success"]:
                 data_formatted = self.__parse_formatted_readings(
                     readings_data, end_date
+                )
+
+                await self.__put_storage_value(
+                    self._reports_store,
+                    {
+                        "reports": {
+                            "start_date": start_date.timestamp(),
+                            "end_date": end_date.timestamp(),
+                            "data": data_formatted,
+                        }
+                    },
                 )
 
         elif readings_response.status in (401, 403):

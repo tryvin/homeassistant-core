@@ -13,6 +13,7 @@ class ERedesHub:
         self,
         hass: HomeAssistant,
         captcha_api_key: str,
+        captcha_api_endpoint: str,
         user_nif: str,
         password: str,
         home_cpe: str,
@@ -21,11 +22,14 @@ class ERedesHub:
 
         self.hass = hass
         self.captcha_api_key = captcha_api_key
+        self.captcha_api_endpoint = captcha_api_endpoint
         self.user_nif = user_nif
         self.password = password
         self.home_cpe = home_cpe
 
-        self.captcha_solver = ERedesCaptchaSolver(self.captcha_api_key, self.hass)
+        self.captcha_solver = ERedesCaptchaSolver(
+            self.captcha_api_key, self.captcha_api_endpoint, self.hass
+        )
 
     async def is_captcha_api_key_valid(self) -> bool:
         """Check if captcha API key is valid."""

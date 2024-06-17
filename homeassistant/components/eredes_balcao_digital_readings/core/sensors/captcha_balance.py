@@ -9,7 +9,7 @@ from homeassistant.const import CURRENCY_DOLLAR
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.util import slugify
 
-from ... import CannotConnect, ERedesHub, InvalidAuth, const
+from ... import CannotConnect, ERedesHub, InvalidAuth
 
 
 class CaptchaBalanceSensor(SensorEntity):
@@ -20,7 +20,9 @@ class CaptchaBalanceSensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_state_class = SensorStateClass.TOTAL
 
-    def __init__(self, device_info: DeviceInfo, user_cpe: str, key_masked: str) -> None:
+    def __init__(
+        self, device_info: DeviceInfo, user_cpe: str, key_masked: str, hub: ERedesHub
+    ) -> None:
         """Initialize device."""
 
         self._attr_device_info = device_info
@@ -28,6 +30,7 @@ class CaptchaBalanceSensor(SensorEntity):
         self._attr_icon = "mdi:currency-usd"
         self.entity_id = f"sensor.{self._attr_unique_id}"
         self.user_cpe = user_cpe
+        self.hub = hub
         self._attr_extra_state_attributes = {
             "user_cpe": user_cpe,
             "key_masked": key_masked,
@@ -36,12 +39,7 @@ class CaptchaBalanceSensor(SensorEntity):
     async def async_update(self):
         """Update the captcha balance."""
 
-        if self.user_cpe in self.hass.data[const.DOMAIN]:
-            e_redes_hub: ERedesHub = self.hass.data[const.DOMAIN][self.user_cpe]
-
-            try:
-                self._attr_native_value = await e_redes_hub.get_captcha_solver_credits()
-            except (InvalidAuth, CannotConnect):
-                self._attr_native_value = None
-        else:
+        try:
+            self._attr_native_value = await self.hub.get_captcha_solver_credits()
+        except (InvalidAuth, CannotConnect):
             self._attr_native_value = None

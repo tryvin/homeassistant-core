@@ -7,7 +7,7 @@
   "documentation": "https://www.home-assistant.io/integrations/eredes_balcao_digital_readings",
   "homekit": {},
   "iot_class": "cloud_polling",
-  "requirements": ["2captcha-python==1.2.6"],
+  "requirements": [],
   "ssdp": [],
   "zeroconf": []
 }

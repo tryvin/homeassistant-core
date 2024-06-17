@@ -6,8 +6,13 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .config_flow import CONF_API_KEY, CONF_CPE, CONF_PASSWORD, CONF_USERNAME
-from .const import DOMAIN
+from .const import (
+    CONF_API_KEY,
+    CONF_CAPTCHA_API_ENDPOINT,
+    CONF_CPE,
+    CONF_PASSWORD,
+    CONF_USERNAME,
+)
 from .coordinator import ERedesDataCoordinator
 from .core.exceptions import CannotConnect, InvalidAuth  # noqa: F401
 from .core.hub import ERedesHub
@@ -21,16 +26,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     eredes_hub = ERedesHub(
         hass,
         captcha_api_key=entry.data[CONF_API_KEY],
+        captcha_api_endpoint=entry.data[CONF_CAPTCHA_API_ENDPOINT],
         user_nif=entry.data[CONF_USERNAME],
         password=entry.data[CONF_PASSWORD],
         home_cpe=entry.data[CONF_CPE],
     )
     coordinator = ERedesDataCoordinator(hass, eredes_hub)
 
-    hass.data[DOMAIN] = {
-        entry.data[CONF_CPE]: eredes_hub,
-        entry.data[CONF_CPE] + "_coordinator": coordinator,
-    }
+    entry.runtime_data = {"hub": eredes_hub, "coordinator": coordinator}
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

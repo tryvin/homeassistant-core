@@ -12,6 +12,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
 from ...coordinator import ERedesDataCoordinator
+from ..hub import ERedesHub
 
 
 class EnergyAccumulatorBalance(CoordinatorEntity, SensorEntity):
@@ -28,6 +29,7 @@ class EnergyAccumulatorBalance(CoordinatorEntity, SensorEntity):
         key_masked: str,
         coordinator: ERedesDataCoordinator,
         coordinator_key: str,
+        hub: ERedesHub,
     ) -> None:
         """Initialize device."""
 
@@ -43,6 +45,7 @@ class EnergyAccumulatorBalance(CoordinatorEntity, SensorEntity):
         self._attr_icon = "mdi:lightning-bolt"
         self.entity_id = f"sensor.{self._attr_unique_id}"
         self.user_cpe = user_cpe
+        self.hub = hub
         self._attr_extra_state_attributes = {
             "user_cpe": user_cpe,
             "key_masked": key_masked,
